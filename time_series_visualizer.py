@@ -5,18 +5,27 @@ from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 
 # Import data (Make sure to parse dates. Consider setting index column to 'date'.)
-df = None
+df = pd.read_csv('fcc-forum-pageviews.csv', parse_dates=['date'])
+df.set_index('date')
 
-# Clean data
-df = None
+# Clean data - Removing top 2.5% and bottom 2.5% of the data
+pv_lower_bound = df['value'].quantile(0.025)
+pv_upper_bound = df['value'].quantile(0.975)
+pv_outliers_removed = (df['value'] >= pv_lower_bound) &\
+                        (df['value'] <= pv_upper_bound)
 
+df= df[pv_outliers_removed]
 
 def draw_line_plot():
-    # Draw line plot
+    fig = plt.figure(figsize=(16, 5))
 
+    x = df['date']
+    y = df['value']
+    plt.plot(x,y, color='brown')
 
-
-
+    plt.title('Daily freeCodeCamp Forum Page Views 5/2016-12/2019')
+    plt.xlabel('Date')
+    plt.ylabel('Page Views')
 
     # Save image and return fig (don't change this part)
     fig.savefig('line_plot.png')
@@ -24,13 +33,39 @@ def draw_line_plot():
 
 def draw_bar_plot():
     # Copy and modify data for monthly bar plot
-    df_bar = None
+    df_bar = df.groupby(pd.Grouper(key='date', freq='M')).mean().reset_index()
+    
+    df_bar['year'] = df_bar['date'].map(lambda dt: dt.strftime('%Y'))
+    df_bar['month_num'] = df_bar['date'].map(lambda dt: dt.strftime('%m'))
 
     # Draw bar plot
-
-
-
-
+    month_name_order = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
+    ]
+    fig = pd.pivot_table(
+                df_bar,
+                index='year',
+                columns='month_num',
+                values='value'
+            )\
+            .plot(kind='bar')\
+            .figure
+    
+    # Change to month names from month's number (12 to December)
+    plt.legend(labels=month_name_order, title='Months')
+    plt.xlabel('Years')
+    plt.ylabel('Average Page Views')
 
     # Save image and return fig (don't change this part)
     fig.savefig('bar_plot.png')
@@ -44,10 +79,45 @@ def draw_box_plot():
     df_box['month'] = [d.strftime('%b') for d in df_box.date]
 
     # Draw box plots (using Seaborn)
+    month_order = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec']
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15,5))
 
+    yearly = sns.boxplot(
+        data=df_box,
+        x=df_box['year'],
+        y=df_box['value'],
+        ax=axes[0]
+    )
+    yearly.set(
+        title ='Year-wise Box Plot (Trend)',
+        xlabel = 'Year',
+        ylabel = 'Page Views'
+    )
 
-
-
+    monthly = sns.boxplot(
+        data=df_box,
+        x=df_box['month'],
+        y=df_box['value'],
+        order=month_order,
+        ax=axes[1]
+    )
+    monthly.set(
+        title = 'Month-wise Box Plot (Seasonality)',
+        xlabel = 'Month',
+        ylabel = 'Page Views'
+    )
 
     # Save image and return fig (don't change this part)
     fig.savefig('box_plot.png')
